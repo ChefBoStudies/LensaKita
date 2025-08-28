@@ -25,12 +25,11 @@ export default async function handler(req, res) {
     if (phErr) return res.status(500).json({ error: phErr.message });
 
     const bucket = process.env.SUPABASE_BUCKET || 'wedding';
+    const base = process.env.SUPABASE_URL.replace(/\/$/, '');
 
     const mapped = (rows || []).map(r => {
       const { data: full } = supabaseAnon.storage.from(bucket).getPublicUrl(r.storage_path);
-      const { data: thumb } = supabaseAnon.storage.from(bucket).getPublicUrl(r.storage_path, {
-        transform: { width: 600, quality: 75 }
-      });
+      const thumbUrl = `${base}/storage/v1/render/image/public/${bucket}/${encodeURI(r.storage_path)}?width=600&quality=75`;
       return {
         id: r.id,
         storagePath: r.storage_path,
@@ -39,7 +38,7 @@ export default async function handler(req, res) {
         caption: r.caption || null,
         createdAt: r.created_at,
         fullUrl: full.publicUrl,
-        thumbUrl: thumb.publicUrl,
+        thumbUrl,
       };
     });
 
