@@ -88,31 +88,36 @@ export function EventPage({ slug }) {
     const cap = Math.min(files.length, remaining);
     for (let i = 0; i < cap; i++) {
       const f = files[i];
+      let tempNode;
       try {
         const { blob, width, height } = await compressImage(f, { maxSide: 2000, quality: 0.85 });
         const dataUrl = await blobToDataURL(blob);
         const { objectPath, uploadUrl, token } = await createUploadUrl(slug, deviceId, 'jpg', '');
         const temp = { id: `local_${i}_${Date.now()}`, thumbUrl: dataUrl, status: 'loading' };
-        const tempNode = grid.prepend(temp);
+        tempNode = grid.prepend(temp);
+
         const fd = new FormData();
         fd.append('file', blob, 'photo.jpg');
         if (token) fd.append('token', token);
         const up = await fetch(uploadUrl, { method: 'POST', body: fd });
-        if (!up.ok) throw new Error('upload_failed');
-        await recordPhoto(slug, { objectPath, width, height, caption: '' });
+        const upText = await up.text().catch(() => '');
+        if (!up.ok) throw new Error(`upload_failed ${up.status} ${upText}`);
+
+        const rec = await recordPhoto(slug, { objectPath, width, height, caption: '' });
         tempNode.remove();
         const used = incUsedCount(slug);
         remaining = Math.max(0, 5 - used);
         counter.render(remaining);
         uploader?.setDisabled(remaining <= 0);
         if (useReal) await refreshPhotos();
+        toast('Upload complete!', 'success');
       } catch (e) {
         console.error(e);
-        toast('Upload failed. Try again.', 'error');
+        if (tempNode) tempNode.remove();
+        toast(`Upload failed. ${e?.message || ''}`.trim(), 'error');
         break;
       }
     }
-    toast('Upload complete!', 'success');
   }
 
   init();
