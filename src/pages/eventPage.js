@@ -6,8 +6,8 @@ import { Grid } from '../ui/components/grid.js';
 import { Empty } from '../ui/components/empty.js';
 import { toast } from '../ui/components/toast.js';
 import { compressImage, blobToDataURL } from '../lib/image.js';
-import { getOrCreateDeviceId, getUsedCount, incUsedCount, setUsedCount } from '../lib/device.js';
-import { getEventBySlug, createUploadUrl, recordPhoto, subscribePhotos, getUsedServerCount, listPhotosReal } from '../lib/mockApi.js';
+import { getOrCreateDeviceId, setUsedCount } from '../lib/device.js';
+import { getEventBySlug, createUploadUrl, recordPhoto, subscribePhotos, listPhotosReal } from '../lib/mockApi.js';
 import { Lightbox } from '../ui/components/modal.js';
 
 function deriveState(nowIso, startIso, endIso) {
@@ -27,14 +27,20 @@ export function EventPage({ slug }) {
   const useReal = Boolean(globalThis.window?.__USE_REAL_API__);
   let poller = null;
 
+  async function fetchRemaining() {
+    const r = await fetch(`/api/remaining?slug=${encodeURIComponent(slug)}&deviceId=${encodeURIComponent(deviceId)}`);
+    if (r.ok) {
+      const { used, remaining: rem } = await r.json();
+      setUsedCount(slug, used);
+      remaining = rem;
+      if (counter) counter.render(remaining);
+      if (uploader) uploader.setDisabled(remaining <= 0);
+    }
+  }
+
   async function init() {
     const event = await getEventBySlug(slug);
     const state = deriveState(event.now, event.startAt, event.endAt);
-    const serverUsed = getUsedServerCount(slug, deviceId);
-    const localUsed = getUsedCount(slug);
-    const used = Math.max(serverUsed, localUsed);
-    setUsedCount(slug, used);
-    remaining = Math.max(0, 5 - used);
 
     shell.append(Header({ title: event.title }));
     counter = Counter({ remaining });
@@ -51,6 +57,7 @@ export function EventPage({ slug }) {
     if (useReal) {
       await refreshPhotos();
       poller = setInterval(refreshPhotos, 12000);
+      await fetchRemaining();
     } else {
       const unsub = subscribePhotos(slug, (items) => {
         grid.render(items);
@@ -70,9 +77,7 @@ export function EventPage({ slug }) {
     try {
       const { photos } = await listPhotosReal(slug);
       grid.render(photos);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) { console.error(e); }
   }
 
   function openLightbox(photo) {
@@ -81,10 +86,7 @@ export function EventPage({ slug }) {
   }
 
   async function onFiles(files) {
-    if (remaining <= 0) {
-      toast('You reached the 5 photo limit.', 'error');
-      return;
-    }
+    if (remaining <= 0) { toast('You reached the 5 photo limit.', 'error'); return; }
     const cap = Math.min(files.length, remaining);
     for (let i = 0; i < cap; i++) {
       const f = files[i];
@@ -96,20 +98,13 @@ export function EventPage({ slug }) {
         const temp = { id: `local_${i}_${Date.now()}`, thumbUrl: dataUrl, status: 'loading' };
         tempNode = grid.prepend(temp);
 
-        const up = await fetch(`/api/upload-proxy?objectPath=${encodeURIComponent(objectPath)}`, {
-          method: 'POST',
-          headers: { 'x-content-type': 'image/jpeg' },
-          body: blob
-        });
+        const up = await fetch(`/api/upload-proxy?objectPath=${encodeURIComponent(objectPath)}`, { method: 'POST', headers: { 'x-content-type': 'image/jpeg' }, body: blob });
         const upText = await up.text().catch(() => '');
         if (!up.ok) throw new Error(`upload_failed ${up.status} ${upText}`);
 
         await recordPhoto(slug, { objectPath, width, height, caption: '' });
         tempNode.remove();
-        const used = incUsedCount(slug);
-        remaining = Math.max(0, 5 - used);
-        counter.render(remaining);
-        uploader?.setDisabled(remaining <= 0);
+        await fetchRemaining();
         if (useReal) await refreshPhotos();
         toast('Upload complete!', 'success');
       } catch (e) {
