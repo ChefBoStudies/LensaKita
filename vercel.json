@@ -9,7 +9,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; img-src 'self' data: blob: https://bpeboxqkyupdpqszncag.supabase.co; connect-src 'self' https://bpeboxqkyupdpqszncag.supabase.co; style-src 'self'; script-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://bpeboxqkyupdpqszncag.supabase.co; upgrade-insecure-requests"
+          "value": "default-src 'self'; img-src 'self' data: blob: https://bpeboxqkyupdpqszncag.supabase.co https://*.supabase.co; connect-src 'self' https://bpeboxqkyupdpqszncag.supabase.co; style-src 'self'; script-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://bpeboxqkyupdpqszncag.supabase.co; upgrade-insecure-requests"
         },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "X-Content-Type-Options", "value": "nosniff" },
