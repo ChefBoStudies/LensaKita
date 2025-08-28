@@ -91,11 +91,12 @@ export function EventPage({ slug }) {
       try {
         const { blob, width, height } = await compressImage(f, { maxSide: 2000, quality: 0.85 });
         const dataUrl = await blobToDataURL(blob);
-        const { objectPath, uploadUrl } = await createUploadUrl(slug, deviceId, 'jpg', '');
+        const { objectPath, uploadUrl, token } = await createUploadUrl(slug, deviceId, 'jpg', '');
         const temp = { id: `local_${i}_${Date.now()}`, thumbUrl: dataUrl, status: 'loading' };
         const tempNode = grid.prepend(temp);
         const fd = new FormData();
         fd.append('file', blob, 'photo.jpg');
+        if (token) fd.append('token', token);
         const up = await fetch(uploadUrl, { method: 'POST', body: fd });
         if (!up.ok) throw new Error('upload_failed');
         await recordPhoto(slug, { objectPath, width, height, caption: '' });
