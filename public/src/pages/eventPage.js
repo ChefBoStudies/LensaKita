@@ -92,18 +92,19 @@ export function EventPage({ slug }) {
       try {
         const { blob, width, height } = await compressImage(f, { maxSide: 2000, quality: 0.85 });
         const dataUrl = await blobToDataURL(blob);
-        const { objectPath, uploadUrl, token } = await createUploadUrl(slug, deviceId, 'jpg', '');
+        const { objectPath } = await createUploadUrl(slug, deviceId, 'jpg', '');
         const temp = { id: `local_${i}_${Date.now()}`, thumbUrl: dataUrl, status: 'loading' };
         tempNode = grid.prepend(temp);
 
-        const fd = new FormData();
-        fd.append('file', blob, 'photo.jpg');
-        if (token) fd.append('token', token);
-        const up = await fetch(uploadUrl, { method: 'POST', body: fd });
+        const up = await fetch(`/api/upload-proxy?objectPath=${encodeURIComponent(objectPath)}`, {
+          method: 'POST',
+          headers: { 'x-content-type': 'image/jpeg' },
+          body: blob
+        });
         const upText = await up.text().catch(() => '');
         if (!up.ok) throw new Error(`upload_failed ${up.status} ${upText}`);
 
-        const rec = await recordPhoto(slug, { objectPath, width, height, caption: '' });
+        await recordPhoto(slug, { objectPath, width, height, caption: '' });
         tempNode.remove();
         const used = incUsedCount(slug);
         remaining = Math.max(0, 5 - used);
