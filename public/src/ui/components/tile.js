@@ -5,10 +5,7 @@ export function Tile({ photo, onClick }) {
   if (photo.status === 'loading') {
     root.append(el('div', { class: 'shimmer', 'aria-hidden': 'true' }));
   }
-  const img = el('img', { src: photo.thumbUrl || photo.fullUrl, alt: '', loading: 'lazy', decoding: 'async' });
-  img.addEventListener('error', () => {
-    if (photo.fullUrl && img.src !== photo.fullUrl) img.src = photo.fullUrl;
-  }, { once: true });
+  const img = el('img', { src: photo.fullUrl, alt: '', loading: 'lazy', decoding: 'async' });
   root.append(img);
   if (photo.status && photo.status !== 'ready') {
     const badge = el('div', { class: 'badge' }, photo.status);
