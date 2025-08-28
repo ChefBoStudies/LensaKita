@@ -10,7 +10,6 @@ export default async function handler(req, res) {
     const { eventSlug, deviceId, ext = 'jpg', caption = '' } = req.body || {};
     if (!eventSlug || !deviceId) return res.status(400).json({ error: 'bad_request' });
 
-    // Reserve a slot (service role only function)
     const { data: slotData, error: slotErr } = await supabase.rpc('reserve_upload_slot', {
       event_slug: eventSlug,
       device_id: deviceId
@@ -20,19 +19,19 @@ export default async function handler(req, res) {
       return res.status(code).json({ error: slotErr.message });
     }
 
-    // Lookup event to get id
     const { data: ev, error: evErr } = await supabase.from('events').select('id').eq('slug', eventSlug).single();
     if (evErr || !ev) return res.status(404).json({ error: 'event_not_found' });
 
-    // Prepare object path
     const photoId = crypto.randomUUID();
     const objectPath = `events/${ev.id}/original/${photoId}.${ext}`;
 
-    // Create a signed URL for PUT upload (Vercel serverless executes in Node 18+)
-    // Supabase Storage signed upload workaround: create an upload signed URL via createSignedUploadUrl
+    const bucket = process.env.SUPABASE_BUCKET || 'wedding';
     const { data: signed, error: signErr } = await supabase.storage
-      .from(process.env.SUPABASE_BUCKET || 'wedding')
-      .createSignedUploadUrl(objectPath);
+      .from(bucket)
+      .createSignedUploadUrl(objectPath, {
+        upsert: false,
+        contentType: 'image/jpeg'
+      });
     if (signErr) return res.status(500).json({ error: signErr.message });
 
     return res.status(200).json({
