@@ -3,10 +3,10 @@ import { getOrCreateDeviceId } from './device.js';
 const USE_REAL = Boolean(globalThis?.window?.__USE_REAL_API__);
 
 const DB = {
-  events: new Map(), // slug -> { id, slug, title, startAt, endAt }
-  photos: new Map(), // eventId -> Array<photo>
-  reservations: new Map(), // key(eventId|deviceId) -> count
-  subs: new Map(), // eventId -> Set<fn>
+  events: new Map(),
+  photos: new Map(),
+  reservations: new Map(),
+  subs: new Map(),
 };
 
 function uuid() { return (crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`); }
@@ -41,10 +41,16 @@ async function realRecordPhoto(eventSlug, payload) {
   return r.json();
 }
 
+async function realListPhotos(slug) {
+  const r = await fetch(`/api/photos?slug=${encodeURIComponent(slug)}`);
+  if (!r.ok) throw new Error('photos_error');
+  return r.json();
+}
+
 function ensureEvent(slug) {
   if (DB.events.has(slug)) return DB.events.get(slug);
-  const start = new Date(Date.now() - 30 * 60 * 1000); // started 30m ago
-  const end = new Date(Date.now() + 11.5 * 60 * 60 * 1000); // ends in 11.5h
+  const start = new Date(Date.now() - 30 * 60 * 1000);
+  const end = new Date(Date.now() + 11.5 * 60 * 60 * 1000);
   const ev = { id: uuid(), slug, title: 'Wedding Cam', startAt: start.toISOString(), endAt: end.toISOString() };
   DB.events.set(slug, ev);
   DB.photos.set(ev.id, []);
@@ -116,15 +122,23 @@ export function subscribePhotos(eventSlug, cb) {
   const set = DB.subs.get(ev.id);
   set.add(cb);
   emit(ev.id);
-  const timer = setInterval(() => {
-    const i = Math.floor(Math.random() * 1000);
-    const p = { id: uuid(), eventId: ev.id, thumbUrl: svgPlaceholder(i), fullUrl: svgPlaceholder(i, 1200, 1200), width: 600, height: 600, createdAt: nowIso(), status: 'ready' };
-    const arr = DB.photos.get(ev.id) || [];
-    arr.unshift(p);
-    DB.photos.set(ev.id, arr);
-    emit(ev.id);
-  }, 6000 + Math.random() * 6000);
-  return () => { clearInterval(timer); set.delete(cb); };
+  // In real mode, we won't simulate incoming photos.
+  let timer = null;
+  if (!USE_REAL) {
+    timer = setInterval(() => {
+      const i = Math.floor(Math.random() * 1000);
+      const p = { id: uuid(), eventId: ev.id, thumbUrl: svgPlaceholder(i), fullUrl: svgPlaceholder(i, 1200, 1200), width: 600, height: 600, createdAt: nowIso(), status: 'ready' };
+      const arr = DB.photos.get(ev.id) || [];
+      arr.unshift(p);
+      DB.photos.set(ev.id, arr);
+      emit(ev.id);
+    }, 6000 + Math.random() * 6000);
+  }
+  return () => { if (timer) clearInterval(timer); set.delete(cb); };
+}
+
+export async function listPhotosReal(slug) {
+  return realListPhotos(slug);
 }
 
 export function getUsedServerCount(eventSlug, deviceId) {
