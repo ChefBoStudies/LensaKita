@@ -1,9 +1,9 @@
 {
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/e", "destination": "/public/index.html" },
-    { "source": "/e/(.*)", "destination": "/public/index.html" },
-    { "source": "/", "destination": "/public/index.html" }
+  "routes": [
+    { "src": "/api/.*", "dest": "/api" },
+    { "handle": "filesystem" },
+    { "src": "/e(?:/.*)?", "dest": "/public/index.html" },
+    { "src": "/$", "dest": "/public/index.html" }
   ],
   "headers": [
     {
