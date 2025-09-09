@@ -31,7 +31,8 @@ export default async function handler(req, res) {
         .from('storage.objects')
         .select('name')
         .eq('bucket_id', process.env.SUPABASE_BUCKET || 'wedding')
-        .in('name', paths);
+        .in('name', paths)
+        .is('deleted_at', null);
       if (!soErr && objs) existing = new Set(objs.map(o => o.name));
     }
 
