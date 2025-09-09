@@ -1,13 +1,7 @@
 {
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/e/(.*)", "destination": "/public/index.html" },
-    { "source": "/", "destination": "/public/index.html" },
-    {
-      "source": "/(.*)",
-      "has": [ { "type": "header", "key": "Accept", "value": ".*text/html.*" } ],
-      "destination": "/public/index.html"
-    }
+    { "source": "/((?!api/|public/|src/|_next/|.*\..*).*)", "destination": "/public/index.html" }
   ],
   "headers": [
     {
