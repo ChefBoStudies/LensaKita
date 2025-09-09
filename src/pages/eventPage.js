@@ -10,15 +10,6 @@ import { getOrCreateDeviceId, setUsedCount } from '../lib/device.js';
 import { getEventBySlug, createUploadUrl, recordPhoto, subscribePhotos, listPhotosReal } from '../lib/mockApi.js';
 import { Lightbox } from '../ui/components/modal.js';
 
-function deriveState(nowIso, startIso, endIso) {
-  const now = new Date(nowIso).getTime();
-  const start = new Date(startIso).getTime();
-  const end = new Date(endIso).getTime();
-  if (now < start) return 'pre';
-  if (now > end) return 'closed';
-  return 'live';
-}
-
 export function EventPage({ slug }) {
   const deviceId = getOrCreateDeviceId();
   const shell = el('main');
@@ -40,16 +31,13 @@ export function EventPage({ slug }) {
 
   async function init() {
     const event = await getEventBySlug(slug);
-    const state = deriveState(event.now, event.startAt, event.endAt);
 
     shell.append(Header({ title: event.title }));
     counter = Counter({ remaining });
     shell.append(counter.root);
 
-    if (state === 'live') {
-      uploader = Uploader({ onFiles: onFiles, disabled: remaining <= 0 });
-      shell.append(uploader.root);
-    }
+    uploader = Uploader({ onFiles: onFiles, disabled: remaining <= 0 });
+    shell.append(uploader.root);
 
     grid = Grid({ photos: [], onTileClick: openLightbox });
     shell.append(grid.root);
@@ -66,24 +54,14 @@ export function EventPage({ slug }) {
       shell._cleanup = () => unsub();
     }
 
-    if (state !== 'live') {
-      shell.append(Empty({ kind: state }));
-    }
-
     if (!shell._cleanup) shell._cleanup = () => { if (poller) clearInterval(poller); };
   }
 
   async function refreshPhotos() {
-    try {
-      const { photos } = await listPhotosReal(slug);
-      grid.render(photos);
-    } catch (e) { console.error(e); }
+    try { const { photos } = await listPhotosReal(slug); grid.render(photos); } catch (e) { console.error(e); }
   }
 
-  function openLightbox(photo) {
-    const lb = Lightbox({ photo, onClose: () => {} });
-    lb.open();
-  }
+  function openLightbox(photo) { const lb = Lightbox({ photo, onClose: () => {} }); lb.open(); }
 
   async function onFiles(files) {
     if (remaining <= 0) { toast('You reached the 5 photo limit.', 'error'); return; }
@@ -107,12 +85,7 @@ export function EventPage({ slug }) {
         await fetchRemaining();
         if (useReal) await refreshPhotos();
         toast('Upload complete!', 'success');
-      } catch (e) {
-        console.error(e);
-        if (tempNode) tempNode.remove();
-        toast(`Upload failed. ${e?.message || ''}`.trim(), 'error');
-        break;
-      }
+      } catch (e) { console.error(e); if (tempNode) tempNode.remove(); toast(`Upload failed. ${e?.message || ''}`.trim(), 'error'); break; }
     }
   }
 

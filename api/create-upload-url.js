@@ -10,6 +10,7 @@ export default async function handler(req, res) {
     const { eventSlug, deviceId, ext = 'jpg', caption = '' } = req.body || {};
     if (!eventSlug || !deviceId) return res.status(400).json({ error: 'bad_request' });
 
+    // Reserve a slot (we'll modify the DB function to not enforce time window)
     const { data: slotData, error: slotErr } = await supabase.rpc('reserve_upload_slot', {
       event_slug: eventSlug,
       device_id: deviceId
@@ -28,18 +29,10 @@ export default async function handler(req, res) {
     const bucket = process.env.SUPABASE_BUCKET || 'wedding';
     const { data: signed, error: signErr } = await supabase.storage
       .from(bucket)
-      .createSignedUploadUrl(objectPath, {
-        upsert: false,
-        contentType: 'image/jpeg'
-      });
+      .createSignedUploadUrl(objectPath, { upsert: false, contentType: 'image/jpeg' });
     if (signErr) return res.status(500).json({ error: signErr.message });
 
-    return res.status(200).json({
-      uploadUrl: signed.signedUrl,
-      token: signed.token,
-      objectPath,
-      caption: String(caption || '').slice(0, 120)
-    });
+    return res.status(200).json({ uploadUrl: signed.signedUrl, token: signed.token, objectPath, caption: String(caption || '').slice(0, 120) });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'server_error' });
