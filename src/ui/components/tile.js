@@ -6,6 +6,10 @@ export function Tile({ photo, onClick }) {
     root.append(el('div', { class: 'shimmer', 'aria-hidden': 'true' }));
   }
   const img = el('img', { src: photo.fullUrl, alt: '', loading: 'lazy', decoding: 'async' });
+  img.addEventListener('error', () => {
+    // Remove broken tile; next poll will also exclude if API filters it out
+    root.remove();
+  });
   root.append(img);
   if (photo.status && photo.status !== 'ready') {
     const badge = el('div', { class: 'badge' }, photo.status);
