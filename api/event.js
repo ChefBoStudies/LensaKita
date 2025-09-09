@@ -8,9 +8,9 @@ export default async function handler(req, res) {
   try {
     const slug = req.query.slug;
     if (!slug) return res.status(400).json({ error: 'bad_request' });
-    const { data, error } = await supabase.from('events').select('slug,title,start_at,end_at').eq('slug', slug).single();
+    const { data, error } = await supabase.from('events').select('slug,title').eq('slug', slug).single();
     if (error || !data) return res.status(404).json({ error: 'not_found' });
-    return res.status(200).json({ slug: data.slug, title: data.title, startAt: data.start_at, endAt: data.end_at, now: new Date().toISOString() });
+    return res.status(200).json({ slug: data.slug, title: data.title });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'server_error' });
