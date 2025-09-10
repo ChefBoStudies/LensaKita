@@ -31,23 +31,29 @@ export default async function handler(req, res) {
       .limit(200);
     if (phErr) return res.status(500).json({ error: phErr.message });
 
-    const items = (rows || []).map(r => ({
-      id: r.id,
-      storagePath: r.storage_path,
-      width: r.width,
-      height: r.height,
-      caption: r.caption || null,
-      createdAt: r.created_at,
-      fullUrl: `/api/img?path=${encodeURIComponent(r.storage_path)}`,
-      thumbUrl: `/api/img?path=${encodeURIComponent(r.storage_path)}`,
-    }));
+    const bucket = process.env.SUPABASE_BUCKET || 'wedding';
 
-    // Filter out any whose image is not immediately accessible
-    const checks = await Promise.all(items.map(async it => (await headOk(it.fullUrl)) ? it : null));
-    const filtered = checks.filter(Boolean);
+    // Build items with absolute public URLs for validation, but return proxied URLs for the UI
+    const validated = [];
+    for (const r of rows || []) {
+      const { data: pub } = supabaseAdmin.storage.from(bucket).getPublicUrl(r.storage_path);
+      const ok = pub?.publicUrl ? await headOk(pub.publicUrl) : false;
+      if (ok) {
+        validated.push({
+          id: r.id,
+          storagePath: r.storage_path,
+          width: r.width,
+          height: r.height,
+          caption: r.caption || null,
+          createdAt: r.created_at,
+          fullUrl: `/api/img?path=${encodeURIComponent(r.storage_path)}`,
+          thumbUrl: `/api/img?path=${encodeURIComponent(r.storage_path)}`,
+        });
+      }
+    }
 
     res.setHeader('Cache-Control', 'no-store');
-    return res.status(200).json({ eventId: ev.id, photos: filtered });
+    return res.status(200).json({ eventId: ev.id, photos: validated });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'server_error' });
