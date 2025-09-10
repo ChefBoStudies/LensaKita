@@ -4,6 +4,13 @@ const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABAS
   auth: { persistSession: false },
 });
 
+async function headOk(url) {
+  try {
+    const r = await fetch(url, { method: 'HEAD' });
+    return r.ok;
+  } catch { return false; }
+}
+
 export default async function handler(req, res) {
   try {
     const slug = req.query.slug;
@@ -24,33 +31,23 @@ export default async function handler(req, res) {
       .limit(200);
     if (phErr) return res.status(500).json({ error: phErr.message });
 
-    const paths = (rows || []).map(r => r.storage_path);
-    let existing = new Set(paths);
-    if (paths.length) {
-      const { data: objs, error: soErr } = await supabaseAdmin
-        .from('storage.objects')
-        .select('name')
-        .eq('bucket_id', process.env.SUPABASE_BUCKET || 'wedding')
-        .in('name', paths)
-        .is('deleted_at', null);
-      if (!soErr && objs) existing = new Set(objs.map(o => o.name));
-    }
+    const items = (rows || []).map(r => ({
+      id: r.id,
+      storagePath: r.storage_path,
+      width: r.width,
+      height: r.height,
+      caption: r.caption || null,
+      createdAt: r.created_at,
+      fullUrl: `/api/img?path=${encodeURIComponent(r.storage_path)}`,
+      thumbUrl: `/api/img?path=${encodeURIComponent(r.storage_path)}`,
+    }));
 
-    const mapped = (rows || [])
-      .filter(r => existing.has(r.storage_path))
-      .map(r => ({
-        id: r.id,
-        storagePath: r.storage_path,
-        width: r.width,
-        height: r.height,
-        caption: r.caption || null,
-        createdAt: r.created_at,
-        fullUrl: `/api/img?path=${encodeURIComponent(r.storage_path)}`,
-        thumbUrl: `/api/img?path=${encodeURIComponent(r.storage_path)}`,
-      }));
+    // Filter out any whose image is not immediately accessible
+    const checks = await Promise.all(items.map(async it => (await headOk(it.fullUrl)) ? it : null));
+    const filtered = checks.filter(Boolean);
 
     res.setHeader('Cache-Control', 'no-store');
-    return res.status(200).json({ eventId: ev.id, photos: mapped });
+    return res.status(200).json({ eventId: ev.id, photos: filtered });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'server_error' });
