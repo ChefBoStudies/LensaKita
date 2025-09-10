@@ -1,40 +1,43 @@
 :root {
-  /* Colors */
-  --color-neutral-0: #ffffff;
-  --color-neutral-50: #fafafa;
-  --color-neutral-100: #f5f5f5;
-  --color-neutral-200: #eeeeee;
-  --color-neutral-300: #e0e0e0;
-  --color-neutral-400: #bdbdbd;
-  --color-neutral-500: #9e9e9e;
-  --color-neutral-600: #757575;
-  --color-neutral-700: #616161;
-  --color-neutral-800: #424242;
-  --color-neutral-900: #212121;
+  /* Earth-tone palette */
+  --color-neutral-0: #0f0f0d;
+  --color-neutral-50: #141412;
+  --color-neutral-100: #1a1a17;
+  --color-neutral-200: #23231f;
+  --color-neutral-300: #2c2c26;
+  --color-neutral-400: #3a3a33;
+  --color-neutral-500: #4a4a42;
+  --color-neutral-600: #6b6b61;
+  --color-neutral-700: #8a8a7e;
+  --color-neutral-800: #c5c5b7;
+  --color-neutral-900: #eceadf;
 
-  /* Brand (Airbnb-like coral) */
-  --color-brand-50: #fff2f5;
-  --color-brand-100: #ffd6de;
-  --color-brand-200: #ffb3c1;
-  --color-brand-300: #ff8aa2;
-  --color-brand-400: #ff6b8a;
-  --color-brand-500: #ff385c; /* primary */
-  --color-brand-600: #e71d48;
-  --color-brand-700: #c4143a;
+  /* Brand: warm clay/terracotta */
+  --color-brand-50: #fdf7f2;
+  --color-brand-100: #f7e4d6;
+  --color-brand-200: #f2ccb3;
+  --color-brand-300: #e9b08e;
+  --color-brand-400: #da8f68;
+  --color-brand-500: #c76d3b; /* primary */
+  --color-brand-600: #a8562d;
+  --color-brand-700: #8a4423;
 
-  --color-success: #16a34a;
-  --color-warning: #d97706;
-  --color-danger: #dc2626;
+  --color-accent-olive: #6d7c3f;
+  --color-accent-sage: #9bb08c;
+
+  --color-success: #3b7a57;
+  --color-warning: #b0842c;
+  --color-danger: #a23b3b;
 
   /* Typography */
-  --font-sans: Inter, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-  --text-14: 0.875rem; /* 14px */
-  --text-16: 1rem;     /* 16px */
-  --text-18: 1.125rem; /* 18px */
-  --text-22: 1.375rem; /* 22px */
-  --text-28: 1.75rem;  /* 28px */
+  --font-sans: Inter, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial;
+  --text-14: 0.875rem;
+  --text-16: 1rem;
+  --text-18: 1.125rem;
+  --text-22: 1.375rem;
+  --text-28: 1.75rem;
 
-  /* Spacing (8pt scale + 4) */
+  /* Spacing */
   --space-4: 4px;
   --space-8: 8px;
   --space-12: 12px;
@@ -50,9 +53,9 @@
   --radius-lg: 20px;
 
   /* Shadows */
-  --shadow-100: 0 1px 2px rgba(0,0,0,0.06);
-  --shadow-200: 0 2px 6px rgba(0,0,0,0.08);
-  --shadow-300: 0 6px 16px rgba(0,0,0,0.12);
+  --shadow-100: 0 1px 2px rgba(0,0,0,0.18);
+  --shadow-200: 0 2px 6px rgba(0,0,0,0.22);
+  --shadow-300: 0 6px 16px rgba(0,0,0,0.26);
 
   /* Motion */
   --dur-tap: 120ms;
@@ -63,18 +66,18 @@
   --max-content: 720px;
 }
 
-@media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: light) {
   :root {
-    --color-neutral-0: #0b0b0c;
-    --color-neutral-50: #111113;
-    --color-neutral-100: #161618;
-    --color-neutral-200: #1c1c1f;
-    --color-neutral-300: #232326;
-    --color-neutral-400: #2b2b2f;
-    --color-neutral-500: #313136;
-    --color-neutral-600: #5a5a61;
-    --color-neutral-700: #777781;
-    --color-neutral-800: #b1b1ba;
-    --color-neutral-900: #e3e3e7;
+    --color-neutral-0: #faf8f3;
+    --color-neutral-50: #f4f0e7;
+    --color-neutral-100: #eee8db;
+    --color-neutral-200: #e6decd;
+    --color-neutral-300: #d9cfbb;
+    --color-neutral-400: #c7bba3;
+    --color-neutral-500: #a99d86;
+    --color-neutral-600: #7d735e;
+    --color-neutral-700: #5f5646;
+    --color-neutral-800: #2f2b25;
+    --color-neutral-900: #14130f;
   }
 }
