@@ -5,6 +5,7 @@ import { Uploader } from '../ui/components/uploader.js';
 import { Grid } from '../ui/components/grid.js';
 import { Empty } from '../ui/components/empty.js';
 import { toast } from '../ui/components/toast.js';
+import { compressImage, blobToDataURL } from '../lib/image.js';
 import { getOrCreateDeviceId, setUsedCount } from '../lib/device.js';
 import { getEventBySlug, createUploadUrl, recordPhoto, subscribePhotos, listPhotosReal } from '../lib/mockApi.js';
 import { Lightbox } from '../ui/components/modal.js';
@@ -62,30 +63,24 @@ export function EventPage({ slug }) {
     const cap = Math.min(files.length, remaining);
     for (let i = 0; i < cap; i++) {
       const f = files[i];
-      let tempNode; let previewUrl;
+      let tempNode;
       try {
+        const { blob, width, height } = await compressImage(f, { maxSide: 2000, quality: 0.85 });
+        const dataUrl = await blobToDataURL(blob);
         const { objectPath } = await createUploadUrl(slug, deviceId, 'jpg', '');
-        previewUrl = URL.createObjectURL(f);
-        const temp = { id: `local_${i}_${Date.now()}`, thumbUrl: previewUrl, status: 'loading' };
+        const temp = { id: `local_${i}_${Date.now()}`, thumbUrl: dataUrl, status: 'loading' };
         tempNode = grid.prepend(temp);
 
-        const up = await fetch(`/api/upload-proxy?objectPath=${encodeURIComponent(objectPath)}`, { method: 'POST', headers: { 'x-content-type': f.type || 'image/jpeg' }, body: f });
+        const up = await fetch(`/api/upload-proxy?objectPath=${encodeURIComponent(objectPath)}&skipRotate=1`, { method: 'POST', headers: { 'x-content-type': 'image/jpeg' }, body: blob });
         const upText = await up.text().catch(() => '');
         if (!up.ok) throw new Error(`upload_failed ${up.status} ${upText}`);
 
-        await recordPhoto(slug, { objectPath, width: null, height: null, caption: '' });
+        await recordPhoto(slug, { objectPath, width, height, caption: '' });
         tempNode.remove();
-        URL.revokeObjectURL(previewUrl);
         await fetchRemaining();
         if (useReal) await refreshPhotos();
         toast('Upload complete!', 'success');
-      } catch (e) {
-        console.error(e);
-        if (tempNode) tempNode.remove();
-        if (previewUrl) URL.revokeObjectURL(previewUrl);
-        toast(`Upload failed. ${e?.message || ''}`.trim(), 'error');
-        break;
-      }
+      } catch (e) { console.error(e); if (tempNode) tempNode.remove(); toast(`Upload failed. ${e?.message || ''}`.trim(), 'error'); break; }
     }
   }
 
