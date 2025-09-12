@@ -15,20 +15,19 @@ export default async function handler(req, res) {
     for await (const chunk of req) chunks.push(chunk);
     const buffer = Buffer.concat(chunks);
 
-    // Normalize orientation and strip metadata server-side for consistent display
     let normalized;
     try {
-      normalized = await sharp(buffer).rotate().jpeg({ quality: 85, chromaSubsampling: '4:4:4' }).toBuffer();
+      normalized = await sharp(buffer)
+        .rotate() // respect EXIF
+        .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85, chromaSubsampling: '4:4:4' })
+        .toBuffer();
     } catch (e) {
-      // Fallback to original buffer if processing fails
       normalized = buffer;
     }
 
     const bucket = process.env.SUPABASE_BUCKET || 'wedding';
-    const { error: upErr } = await supabase
-      .storage
-      .from(bucket)
-      .upload(objectPath, normalized, { contentType: 'image/jpeg', upsert: false });
+    const { error: upErr } = await supabase.storage.from(bucket).upload(objectPath, normalized, { contentType: 'image/jpeg', upsert: false });
     if (upErr) return res.status(500).json({ error: upErr.message });
 
     return res.status(200).json({ ok: true });
