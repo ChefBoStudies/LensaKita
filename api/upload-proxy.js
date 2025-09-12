@@ -9,6 +9,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
   try {
     const objectPath = req.query.objectPath || req.headers['x-object-path'];
+    const skipRotate = req.query.skipRotate === '1' || req.headers['x-skip-rotate'] === '1';
     if (!objectPath) return res.status(400).json({ error: 'missing_object_path' });
 
     const chunks = [];
@@ -17,8 +18,9 @@ export default async function handler(req, res) {
 
     let normalized;
     try {
-      normalized = await sharp(buffer)
-        .rotate() // respect EXIF
+      let p = sharp(buffer);
+      if (!skipRotate) p = p.rotate();
+      normalized = await p
         .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true })
         .jpeg({ quality: 85, chromaSubsampling: '4:4:4' })
         .toBuffer();

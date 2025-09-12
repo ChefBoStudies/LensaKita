@@ -47,19 +47,14 @@ export function EventPage({ slug }) {
       poller = setInterval(refreshPhotos, 12000);
       await fetchRemaining();
     } else {
-      const unsub = subscribePhotos(slug, (items) => {
-        grid.render(items);
-        if (!items.length) shell.append(Empty({ kind: 'empty' }));
-      });
+      const unsub = subscribePhotos(slug, (items) => { grid.render(items); if (!items.length) shell.append(Empty({ kind: 'empty' })); });
       shell._cleanup = () => unsub();
     }
 
     if (!shell._cleanup) shell._cleanup = () => { if (poller) clearInterval(poller); };
   }
 
-  async function refreshPhotos() {
-    try { const { photos } = await listPhotosReal(slug); grid.render(photos); } catch (e) { console.error(e); }
-  }
+  async function refreshPhotos() { try { const { photos } = await listPhotosReal(slug); grid.render(photos); } catch (e) { console.error(e); } }
 
   function openLightbox(photo) { const lb = Lightbox({ photo, onClose: () => {} }); lb.open(); }
 
@@ -70,13 +65,13 @@ export function EventPage({ slug }) {
       const f = files[i];
       let tempNode;
       try {
-        const { blob, width, height } = await compressImage(f, { maxSide: 2000, quality: 0.85 });
+        const { blob, width, height, corrected } = await compressImage(f, { maxSide: 2000, quality: 0.85 });
         const dataUrl = await blobToDataURL(blob);
         const { objectPath } = await createUploadUrl(slug, deviceId, 'jpg', '');
         const temp = { id: `local_${i}_${Date.now()}`, thumbUrl: dataUrl, status: 'loading' };
         tempNode = grid.prepend(temp);
 
-        const up = await fetch(`/api/upload-proxy?objectPath=${encodeURIComponent(objectPath)}`, { method: 'POST', headers: { 'x-content-type': 'image/jpeg' }, body: blob });
+        const up = await fetch(`/api/upload-proxy?objectPath=${encodeURIComponent(objectPath)}` + (corrected ? '&skipRotate=1' : ''), { method: 'POST', headers: { 'x-content-type': 'image/jpeg' }, body: blob });
         const upText = await up.text().catch(() => '');
         if (!up.ok) throw new Error(`upload_failed ${up.status} ${upText}`);
 
