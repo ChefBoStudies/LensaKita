@@ -73,6 +73,22 @@ export function EventPage({ slug }) {
 
         // Extract EXIF orientation on client for reliability across mobile browsers
         let exifOrientationHeader = {};
+        // Also compute displayed orientation as a fallback hint (portrait/landscape)
+        let orientationHintHeader = {};
+        try {
+          const blobUrl = URL.createObjectURL(f);
+          const img = new Image();
+          const dims = await new Promise((resolve, reject) => {
+            img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+            img.onerror = reject;
+            img.src = blobUrl;
+          });
+          URL.revokeObjectURL(blobUrl);
+          if (dims && dims.w && dims.h) {
+            if (dims.h > dims.w) orientationHintHeader = { 'x-wants-portrait': '1' };
+            else if (dims.w > dims.h) orientationHintHeader = { 'x-wants-landscape': '1' };
+          }
+        } catch {}
         try {
           const arr = await f.arrayBuffer();
           const view = new DataView(arr);
@@ -104,7 +120,7 @@ export function EventPage({ slug }) {
           if (ori && ori !== 1) exifOrientationHeader = { 'x-exif-orientation': String(ori) };
         } catch {}
 
-        const up = await fetch(`/api/upload-proxy?objectPath=${encodeURIComponent(objectPath)}`, { method: 'POST', headers: { 'x-content-type': f.type || 'image/jpeg', ...exifOrientationHeader }, body: f });
+        const up = await fetch(`/api/upload-proxy?objectPath=${encodeURIComponent(objectPath)}`, { method: 'POST', headers: { 'x-content-type': f.type || 'image/jpeg', ...exifOrientationHeader, ...orientationHintHeader }, body: f });
         const upText = await up.text().catch(() => '');
         if (!up.ok) throw new Error(`upload_failed ${up.status} ${upText}`);
         let width = null, height = null;

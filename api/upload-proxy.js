@@ -34,6 +34,18 @@ export default async function handler(req, res) {
     } else {
       // Auto-rotate based on embedded EXIF
       pipeline = pipeline.rotate();
+      // If no EXIF and client hinted intended orientation, enforce it
+      const wantsPortrait = req.headers['x-wants-portrait'] === '1';
+      const wantsLandscape = req.headers['x-wants-landscape'] === '1';
+      if (wantsPortrait || wantsLandscape) {
+        const m = await pipeline.metadata().catch(() => ({}));
+        const isPortrait = (m?.height || 0) > (m?.width || 0);
+        if (wantsPortrait && !isPortrait) {
+          pipeline = pipeline.rotate(90);
+        } else if (wantsLandscape && isPortrait) {
+          pipeline = pipeline.rotate(90);
+        }
+      }
     }
 
     const { data: normalized, info } = await pipeline
