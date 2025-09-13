@@ -50,33 +50,46 @@ export async function compressImage(file, { maxSide = 2000, quality = 0.85 } = {
   const orientation = parseExifOrientation(buf);
   const blob = new Blob([buf], { type: file.type });
   const bitmap = await createImageBitmap(blob);
+
+  // Decide whether to rotate
+  const isLandscapePixels = bitmap.width >= bitmap.height;
+  let rotate = 0; let flipX = false; let flipY = false;
+  switch (orientation) {
+    case 2: flipX = true; break; // mirror
+    case 3: rotate = 180; break;
+    case 4: flipY = true; break; // mirror
+    case 5: rotate = 270; flipX = true; break;
+    case 6: rotate = 90; break;
+    case 7: rotate = 90; flipX = true; break;
+    case 8: rotate = 270; break;
+    default: rotate = 0;
+  }
+  // If EXIF suggests 90/270 but pixels already portrait, skip rotation
+  if ((rotate === 90 || rotate === 270) && !isLandscapePixels) rotate = 0;
+
+  // Scale
   let tw = bitmap.width;
   let th = bitmap.height;
   const scale = Math.min(1, maxSide / Math.max(tw, th));
   tw = Math.round(tw * scale);
   th = Math.round(th * scale);
-  const orient = (() => {
-    switch (orientation) {
-      case 2: return { rotate: 0, flipX: true, flipY: false };
-      case 3: return { rotate: 180, flipX: false, flipY: false };
-      case 4: return { rotate: 180, flipX: true, flipY: false };
-      case 5: return { rotate: 90, flipX: true, flipY: false };
-      case 6: return { rotate: 90, flipX: false, flipY: false };
-      case 7: return { rotate: 270, flipX: true, flipY: false };
-      case 8: return { rotate: 270, flipX: false, flipY: false };
-      default: return { rotate: 0, flipX: false, flipY: false };
-    }
-  })();
-  const rotate = orient.rotate || 0;
+
   const swap = rotate === 90 || rotate === 270;
   const cw = swap ? th : tw;
   const ch = swap ? tw : th;
+
   const canvas = document.createElement('canvas');
   canvas.width = cw; canvas.height = ch;
   const ctx = canvas.getContext('2d');
-  ctx.save(); ctx.translate(cw / 2, ch / 2); if (rotate) ctx.rotate((rotate * Math.PI) / 180); ctx.scale(orient.flipX ? -1 : 1, orient.flipY ? -1 : 1); ctx.drawImage(bitmap, -tw / 2, -th / 2, tw, th); ctx.restore();
+  ctx.save();
+  ctx.translate(cw / 2, ch / 2);
+  if (rotate) ctx.rotate((rotate * Math.PI) / 180);
+  if (flipX || flipY) ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
+  ctx.drawImage(bitmap, -tw / 2, -th / 2, tw, th);
+  ctx.restore();
+
   const output = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
-  const corrected = orientation !== 1;
+  const corrected = rotate !== 0 || flipX || flipY;
   return { blob: output, width: cw, height: ch, corrected };
 }
 
