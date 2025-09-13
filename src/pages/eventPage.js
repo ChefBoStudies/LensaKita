@@ -71,7 +71,40 @@ export function EventPage({ slug }) {
         const temp = { id: `local_${i}_${Date.now()}`, thumbUrl: dataUrl, status: 'loading' };
         tempNode = grid.prepend(temp);
 
-        const up = await fetch(`/api/upload-proxy?objectPath=${encodeURIComponent(objectPath)}`, { method: 'POST', headers: { 'x-content-type': f.type || 'image/jpeg' }, body: f });
+        // Extract EXIF orientation on client for reliability across mobile browsers
+        let exifOrientationHeader = {};
+        try {
+          const arr = await f.arrayBuffer();
+          const view = new DataView(arr);
+          let ori = 1;
+          if (view.getUint16(0, false) === 0xFFD8) {
+            let offset = 2;
+            while (offset < view.byteLength) {
+              const marker = view.getUint16(offset, false); offset += 2;
+              if (marker === 0xFFE1) {
+                const len = view.getUint16(offset, false); offset += 2;
+                if (view.getUint32(offset, false) !== 0x45786966) break;
+                offset += 6;
+                const tiff = offset;
+                const little = view.getUint16(tiff, false) === 0x4949;
+                const firstIFD = view.getUint32(tiff + 4, little);
+                const dirStart = tiff + firstIFD;
+                const entries = view.getUint16(dirStart, little);
+                for (let i = 0; i < entries; i++) {
+                  const entry = dirStart + 2 + i * 12;
+                  const tag = view.getUint16(entry, little);
+                  if (tag === 0x0112) { ori = view.getUint16(entry + 8, little) || 1; break; }
+                }
+              } else {
+                const len = view.getUint16(offset, false);
+                offset += len;
+              }
+            }
+          }
+          if (ori && ori !== 1) exifOrientationHeader = { 'x-exif-orientation': String(ori) };
+        } catch {}
+
+        const up = await fetch(`/api/upload-proxy?objectPath=${encodeURIComponent(objectPath)}`, { method: 'POST', headers: { 'x-content-type': f.type || 'image/jpeg', ...exifOrientationHeader }, body: f });
         const upText = await up.text().catch(() => '');
         if (!up.ok) throw new Error(`upload_failed ${up.status} ${upText}`);
         let width = null, height = null;

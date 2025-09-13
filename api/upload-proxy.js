@@ -18,8 +18,23 @@ export default async function handler(req, res) {
     let pipeline = sharp(buffer);
     let meta; try { meta = await pipeline.metadata(); } catch {}
 
-    // Always normalize orientation using embedded EXIF if present
-    pipeline = pipeline.rotate();
+    // If client provides EXIF orientation, prefer that. Else auto-rotate via metadata.
+    const headerOri = Number(req.headers['x-exif-orientation'] || req.query.exifOrientation);
+    if (Number.isInteger(headerOri) && headerOri >= 2 && headerOri <= 8) {
+      switch (headerOri) {
+        case 2: pipeline = pipeline.flop(); break;                 // mirror horizontal
+        case 3: pipeline = pipeline.rotate(180); break;            // 180°
+        case 4: pipeline = pipeline.flip(); break;                 // mirror vertical
+        case 5: pipeline = pipeline.rotate(270).flop(); break;     // mirror horizontal + 270°
+        case 6: pipeline = pipeline.rotate(90); break;             // 90° CW
+        case 7: pipeline = pipeline.rotate(90).flop(); break;      // mirror horizontal + 90°
+        case 8: pipeline = pipeline.rotate(270); break;            // 270° CW
+        default: break;
+      }
+    } else {
+      // Auto-rotate based on embedded EXIF
+      pipeline = pipeline.rotate();
+    }
 
     const { data: normalized, info } = await pipeline
       .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true })
