@@ -45,53 +45,10 @@ export async function getExifOrientation(file) {
   return parseExifOrientation(buf);
 }
 
+// Deprecated: we now upload originals and normalize on server
 export async function compressImage(file, { maxSide = 2000, quality = 0.85 } = {}) {
   const buf = await readAsArrayBuffer(file);
-  const orientation = parseExifOrientation(buf);
-  
-  // Always apply EXIF orientation correction - no heuristics
-  const bitmap = await createImageBitmap(new Blob([buf], { type: file.type }));
-  
-  let rotate = 0; let flipX = false; let flipY = false;
-  switch (orientation) {
-    case 2: flipX = true; break;
-    case 3: rotate = 180; break;
-    case 4: flipY = true; break;
-    case 5: rotate = 270; flipX = true; break;
-    case 6: rotate = 90; break;
-    case 7: rotate = 90; flipX = true; break;
-    case 8: rotate = 270; break;
-    default: rotate = 0;
-  }
-
-  // Calculate final dimensions
-  let tw = bitmap.width;
-  let th = bitmap.height;
-  const scale = Math.min(1, maxSide / Math.max(tw, th));
-  tw = Math.round(tw * scale);
-  th = Math.round(th * scale);
-
-  // Canvas dimensions (swap if 90/270 rotation)
-  const swap = rotate === 90 || rotate === 270;
-  const cw = swap ? th : tw;
-  const ch = swap ? tw : th;
-
-  const canvas = document.createElement('canvas');
-  canvas.width = cw;
-  canvas.height = ch;
-  const ctx = canvas.getContext('2d');
-
-  // Apply transformations
-  ctx.save();
-  ctx.translate(cw / 2, ch / 2);
-  if (rotate) ctx.rotate((rotate * Math.PI) / 180);
-  if (flipX || flipY) ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
-  ctx.drawImage(bitmap, -tw / 2, -th / 2, tw, th);
-  ctx.restore();
-
-  const output = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
-  const corrected = orientation !== 1;
-  return { blob: output, width: cw, height: ch, corrected };
+  return { blob: new Blob([buf], { type: file.type || 'image/jpeg' }), width: null, height: null, corrected: false };
 }
 
 export async function blobToDataURL(blob) {

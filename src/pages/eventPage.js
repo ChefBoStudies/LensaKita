@@ -65,15 +65,17 @@ export function EventPage({ slug }) {
       const f = files[i];
       let tempNode;
       try {
-        const { blob, width, height } = await compressImage(f, { maxSide: 2000, quality: 0.85 });
-        const dataUrl = await blobToDataURL(blob);
+        // Upload original file; server normalizes orientation and resizes
+        const dataUrl = await blobToDataURL(f);
         const { objectPath } = await createUploadUrl(slug, deviceId, 'jpg', '');
         const temp = { id: `local_${i}_${Date.now()}`, thumbUrl: dataUrl, status: 'loading' };
         tempNode = grid.prepend(temp);
 
-        const up = await fetch(`/api/upload-proxy?objectPath=${encodeURIComponent(objectPath)}&skipRotate=1`, { method: 'POST', headers: { 'x-content-type': 'image/jpeg' }, body: blob });
+        const up = await fetch(`/api/upload-proxy?objectPath=${encodeURIComponent(objectPath)}`, { method: 'POST', headers: { 'x-content-type': f.type || 'image/jpeg' }, body: f });
         const upText = await up.text().catch(() => '');
         if (!up.ok) throw new Error(`upload_failed ${up.status} ${upText}`);
+        let width = null, height = null;
+        try { const j = JSON.parse(upText); width = j.width || null; height = j.height || null; } catch {}
 
         await recordPhoto(slug, { objectPath, width, height, caption: '' });
         tempNode.remove();
